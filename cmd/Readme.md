@@ -1,1 +1,0 @@
-first host -> mdns -> pubsub
