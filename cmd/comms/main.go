@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"flag"
+	"fmt"
+	"log"
 	"net/http"
 	"sync"
 
 	"github.com/Swayamjimmy/RescueNet/internal/p2p"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 type IncomingMsg struct {
@@ -48,4 +53,116 @@ func GetMessages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to encode messages", http.StatusInternalServerError)
 		return
 	}
+}
+
+func PostMessage(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w)
+
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method != "POST" {
+		http.Error(w, "Only POST Method supported", http.StatusBadRequest)
+		return
+	}
+
+	var msg_post IncomingMsg
+
+	err := json.NewDecoder(r.Body).Decode(&msg_post)
+
+	if err != nil || msg_post.Message == "" {
+		http.Error(w, "failed to decode", http.StatusBadRequest)
+		return
+	}
+
+	err_pub := cr.Publish(msg_post.Message)
+
+	StoreMessage(msg_post.Message)
+
+	if err_pub != nil {
+		fmt.Println("Sending message failed trying again...")
+		http.Error(w, "failed to publish", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+}
+
+func main() {
+
+	port := flag.String("port", "", "port")
+	nickFlag := flag.String("nick", "", "nickname to use in chat, will be generated if empty")
+	roomFlag := flag.String("room", "chat-room", "name of chat room to join")
+	httpServerRun := flag.Bool("enable-http", false, "run http server on this node")
+
+	sameNetworkString := flag.String("same_string", "", "same_string")
+
+	flag.Parse()
+
+	h, _, err1 := p2p.CreateHost(*port)
+
+	if err1 != nil {
+		log.Fatal("error creating the host")
+	}
+
+	ctx := context.Background()
+
+	ps, err := pubsub.NewGossipSub(ctx, h)
+	if err != nil {
+		panic(err)
+	}
+
+	peerChan := p2p.InitMDNS(h, *sameNetworkString)
+
+	go func() {
+		for {
+			peer := <-peerChan
+			if peer.ID > h.ID() {
+				fmt.Println("Found peer:", peer, "id is greater than us, wait for it to connect to us")
+				continue
+			}
+
+			fmt.Println("Discovered new peer via mDNS:", peer.ID, peer.Addrs)
+
+			if err := h.Connect(ctx, peer); err != nil {
+				fmt.Println("Connection failed:", err)
+				continue
+			}
+
+			log.Println("Connection to the peer found through mDNS has been established")
+			log.Println("Peer Id:", peer.ID, "Peer Addrs: ", peer.Addrs)
+
+		}
+	}()
+
+	nick := *nickFlag
+
+	if len(nick) == 0 {
+		nick = "Swayam"
+	}
+
+	room := *roomFlag
+
+	cr, err = p2p.JoinChatRoom(ctx, ps, h.ID(), nick, room)
+	if err != nil {
+		panic(err)
+	}
+
+	if *httpServerRun {
+
+		go func() {
+
+			http.HandleFunc("/send", PostMessage)
+			http.HandleFunc("/messages", GetMessages)
+
+			err := http.ListenAndServe(":3001", nil)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}()
+
+	}
+
 }
