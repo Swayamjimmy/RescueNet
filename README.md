@@ -96,6 +96,48 @@ Fetch messages stored in memory:
 curl http://localhost:3001/messages
 ```
 
+## Frontend (UI)
+
+The `frontend/` folder contains a React UI that visually shows messages and lets you send messages from the browser.
+
+Important: the UI is **only a visual client**. You still need to run the backend node(s) from the terminal first (because the actual P2P networking is in the Go process).
+
+### Step 1: run the backend node(s) in terminals
+
+Run at least one node with HTTP enabled (so the UI can talk to it):
+
+```bash
+cd cmd/comms
+go run . --port 9000 --same_string xyz --room myroom --nick Swayam --enable-http true
+```
+
+Optionally start a second node in another terminal (can be on another machine on the same LAN):
+
+```bash
+cd cmd/comms
+go run . --port 9001 --same_string xyz --room myroom --nick Anshika 
+```
+
+### Step 2: run the frontend UI
+
+From the repo root:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open the URL printed by Vite (usually `http://localhost:5173`).
+
+### Step 3: use the UI
+
+- The UI sends messages by calling `POST http://localhost:3001/send`
+- The UI refreshes messages by calling `GET http://localhost:3001/messages`
+
+If your backend is running on a different machine, update the frontend fetch URL(s) from `localhost` to that machine’s IP/hostname.
+
+
 ## CLI flags
 
 - `--port` (required): TCP port for the libp2p host to listen on
@@ -131,13 +173,9 @@ Common causes:
 
 ### HTTP requests fail in a browser
 
-If you’re calling the HTTP server from a frontend, CORS headers must be correct. If you see browser CORS errors, check the header names returned by the server.
+If you’re calling the HTTP server from a browser-based client, CORS headers must be correct. If you see browser CORS errors, check the header names returned by the server.
 
 ## Development notes
 
 - PubSub topic naming currently prefixes the room name (see `internal/p2p/pubsub.go`).
 - Messages are broadcast to everyone in the topic; there is no authentication/encryption beyond what libp2p provides by default.
-
-## License
-
-No license file is currently included. Add one (MIT/Apache-2.0/etc.) if you plan to share this publicly.
