@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/Swayamjimmy/RescueNet/internal/p2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -163,6 +166,51 @@ func main() {
 			}
 		}()
 
+	}
+
+	f, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal("error opening logs.txt")
+	}
+
+	go func() {
+
+		for msg := range cr.Messages {
+
+			text := fmt.Sprintf("Recieved message at %s from %s: %s\n", time.Now().Local(), msg.SenderNick, msg.Message)
+			StoreMessage(text)
+
+			fmt.Printf("Recieved message at %s from %s: %s\n", time.Now().Local(), msg.SenderNick, msg.Message)
+			_, err_log := f.WriteString(text)
+			if err_log != nil {
+				log.Fatal("error writing logs..")
+				continue
+			}
+		}
+	}()
+
+	fmt.Println("Sending test message...")
+
+	reader := bufio.NewReader(os.Stdin)
+
+	err = cr.Publish("Hello from " + h.ID().String())
+	if err != nil {
+		fmt.Println("Error publishing: ", err)
+	}
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err_pub := cr.Publish(line)
+
+		if err_pub != nil {
+			fmt.Println("Sending message failed trying again...")
+			cr.Publish(line)
+			continue
+		}
 	}
 
 }
