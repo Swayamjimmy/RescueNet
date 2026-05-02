@@ -1,6 +1,10 @@
 # RescueNet (Comms / P2P Chat)
 
-This repository contains a small Go project that demonstrates **local-network peer discovery** and **chat messaging** using **libp2p**:
+A Go project that demonstrates **local-network peer discovery** and **chat messaging** using **libp2p**:
+
+**Demo Video**
+
+[demo.webm]
 
 - **Peer discovery**: mDNS (find peers on the same LAN)
 - **Messaging**: GossipSub PubSub (broadcast messages to a “room” topic)
