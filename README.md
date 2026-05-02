@@ -4,7 +4,7 @@ A Go project that demonstrates **local-network peer discovery** and **chat messa
 
 **Demo Video**
 
-[demo.webm](https://github.com/Swayamjimmy/RescueNet/blob/main/demo.mp4)
+[demo.webm](https://github.com/Swayamjimmy/RescueNet/blob/main/demo.webm)
 
 - **Peer discovery**: mDNS (find peers on the same LAN)
 - **Messaging**: GossipSub PubSub (broadcast messages to a “room” topic)
